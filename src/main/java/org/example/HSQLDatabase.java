@@ -13,7 +13,6 @@ public class HSQLDatabase implements Database {
         // Singleton pattern implementation
         // Only one instance will be created and will be reused for each object
 
-
         HSQLDatabase result = instance;
 
         if (result == null) {
@@ -69,7 +68,6 @@ public class HSQLDatabase implements Database {
         }
     }
 
-
     @Override
     public ResultSet executeQuery(String query) throws SQLException {
 
@@ -106,19 +104,9 @@ public class HSQLDatabase implements Database {
             e.printStackTrace();
         }
     }
-//
-//    @Override
-//    public String queryFindByEmail(String email) {
-//        String userId;
-//
-//        PreparedStatement ps = connection.prepareStatement("SELECT * FROM USERS WHERE EMAIL = ?");
-//        ps.setString(1, email);
-//
-//        return userId;
-//    }
 
     @Override
-    public String queryFindByEmail(String email) {
+    public String queryFindIDByEmail(String email) {
         try {
             PreparedStatement ps = connection.prepareStatement("SELECT * FROM USERS WHERE EMAIL = ?");
             ps.setString(1, email);
@@ -129,6 +117,21 @@ public class HSQLDatabase implements Database {
             e.printStackTrace();
         }
         return null; // Email doesn't exist in the database
+    }
+
+    @Override
+    public String queryFindIDByUsername(String username) {
+        try {
+            PreparedStatement ps = connection.prepareStatement("SELECT ID FROM USERS WHERE User_Name = ?");
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getString(1); // return if user already exists in db
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 
@@ -171,10 +174,16 @@ public class HSQLDatabase implements Database {
     @Override
     public String queryInsertUser(String userName, String email, String password) {
         String userId = null;
-        if ((userId = queryFindByEmail(email)) != null)
-            return userId; // Email already exists in the database, therefore the user cannot be added
+//        if ((userId = queryFindByEmail(email)) != null)
+//            return userId; // Email already exists in the database, therefore the user cannot be added
 
-        try {
+        if (checkIfUserExists(userName, email) == 1)
+            return String.valueOf(1);
+        else if (checkIfUserExists(userName, email) == 2)
+            return String.valueOf(2);
+
+
+            try {
             PreparedStatement ps;
             ps = connection.prepareStatement("INSERT INTO USERS(USER_NAME, EMAIL, PASSWORD) VALUES (?, ?, ?)");
             ps.setString(1, userName);
@@ -183,7 +192,7 @@ public class HSQLDatabase implements Database {
             ps.executeUpdate();
 
 
-            return queryFindByEmail(email); // FETCH PRIMARY KEY FROM EMAIL AND RETURN TO SERVER
+            return queryFindIDByEmail(email); // FETCH PRIMARY KEY FROM EMAIL AND RETURN TO SERVER
         } catch (SQLException e) {
             e.printStackTrace();
             return null; // Error in adding new user
@@ -192,34 +201,59 @@ public class HSQLDatabase implements Database {
 
 
     public int verifyLoginCredentials(String email, String password) {
-
         try {
-
             PreparedStatement pstmt = connection.prepareStatement("SELECT COUNT(*) FROM USERS WHERE Email = ? AND Password = ?");
             pstmt.setString(1, email);
             pstmt.setString(2, password);
             ResultSet rs = pstmt.executeQuery();
             rs.next();
-            int count = rs.getInt(1);
-            return count;
-
+            return rs.getInt(1);
         } catch (SQLException e) {
-
             e.printStackTrace();
             return 0;
-
-        } finally {
-
-            try {
-
-                connection.close();
-
-            } catch (SQLException e) {
-
-                e.printStackTrace();
-
-            }
         }
+    }
+
+    @Override
+    public int checkIfUserExists(String username, String email) {
+
+        // check if username exists
+        try {
+            PreparedStatement ps = connection.prepareStatement("SELECT * FROM USERS WHERE User_Name = ?");
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next())
+                return 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+
+        // check if email exists
+        try {
+            PreparedStatement ps = connection.prepareStatement("SELECT * FROM USERS WHERE Email = ?");
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next())
+                return 2;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+
+        // check if both username and email exists
+        try {
+            PreparedStatement ps = connection.prepareStatement("SELECT * FROM USERS WHERE User_Name = ? AND Email = ?");
+            ps.setString(1, username);
+            ps.setString(2, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next())
+                return 3;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+        return 0;
     }
 
 
@@ -234,33 +268,48 @@ public class HSQLDatabase implements Database {
             List<String[]> users = new ArrayList<>();
 
             while (rs.next()) {
-
                 String userName = rs.getString("User_Name");
                 String profilePicture = rs.getString("Profile_Picture");
                 String[] user = {userName, profilePicture};
                 users.add(user); // Returns the list of users
-
             }
-
             return users;
-
         } catch (SQLException e) {
-
             e.printStackTrace();
             return new ArrayList<>(); // Returns an empty list on error
-
-        } finally {
-
-            try {
-
-                connection.close();
-
-            } catch (SQLException e) {
-
-                e.printStackTrace();
-
-            }
         }
+    }
+
+    @Override
+    public String queryGetUsername(String email) {
+        try {
+            PreparedStatement pstmt = connection.prepareStatement("SELECT User_Name FROM USERS WHERE Email = ?");
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return null;
+    }
+
+    @Override
+    public String queryFindUsernameByID(Integer id) {
+        try {
+            PreparedStatement pstmt = connection.prepareStatement("SELECT User_Name FROM USERS WHERE id = ?");
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return null;
     }
 
 
@@ -445,84 +494,107 @@ public class HSQLDatabase implements Database {
         }
     }
 
+    /*
+    7 "msg1" 13
+    7 "msg3" 21
+
+    List<string> = {"13", "21"};
+
+     */
+
+    @Override
+    public List<String> queryListFriends(Integer id) {
+
+        List<String> friends = new ArrayList<>();
+
+        try {
+            PreparedStatement ps =
+                    connection.prepareStatement("SELECT DISTINCT Receiver_ID FROM chats WHERE Sender_ID = ?");
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String userName = rs.getString(1);
+                friends.add(userName);
+                System.out.println("### FRIEND: " + userName);
+            }
+            return friends;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+//    @Override
+//    public void cleanoutMessages() {
+//
+//        PreparedStatement ps = connection.prepareStatement("DELETE FROM chats WHERE message = ?");
+//        ps.setInt(1, id);
+//        ResultSet rs = ps.executeQuery();
+//        while (rs.next()) {
+//            String key = rs.getString("sender_id");
+//            String username = queryFindUsernameByID(Integer.valueOf(key));
+//            String msg = rs.getString("message");
+//            // "[13] [here is my message]"
+//            fullMessage = "[".concat(username).concat("]") + " [".concat(msg).concat("]\n");
+//
+//            System.out.println("FULL MESSAGE: " + fullMessage);
+//            messages.add(fullMessage);
+//        }
+//    }
+
 
     @Override
     public int queryAddMessage(Integer senderID, Integer receiverID, String message, Timestamp time) {
 
+        System.out.println("HSQL GOT: \n" + senderID + " " + receiverID + " " + message + " " + time);
         try {
-
-            PreparedStatement ps = connection.prepareStatement("INSERT INTO CHATS(SENDER_ID, MESSAGE, RECEIVER_ID, TIME) VALUES (?, ?, ?)");
+            PreparedStatement ps = connection.prepareStatement("INSERT INTO CHATS(SENDER_ID, MESSAGE, RECEIVER_ID,  TIME) VALUES (?, ?, ?, ?);");
             ps.setInt(1, senderID);
-            ps.setInt(2, receiverID);
-            ps.setString(3, message);
+            ps.setString(2, message);
+            ps.setInt(3, receiverID);
             ps.setTimestamp(4, time);
             int rowsInserted = ps.executeUpdate();
 
-            if (rowsInserted > 0) {
-
+            if (rowsInserted > 0)
                 return 1; // Message was successfully added to the database
-
-            } else {
-
+            else
                 return 0; // No rows were inserted
 
-            }
-
         } catch (SQLException e) {
-
             e.printStackTrace();
             return 0; // Error in executing insert statement
-
-        } finally {
-
-            try {
-
-                connection.close();
-
-            } catch (SQLException e) {
-
-                e.printStackTrace();
-            }
         }
     }
 
 
     @Override
-    public List<String> queryGetMessages(Integer id) {
-
+    public List<String> queryGetMessages(Integer id, String partner) {
         List<String> messages = new ArrayList<>();
+        Integer partnerId = Integer.valueOf(queryFindIDByUsername(partner));
+
+        String fullMessage = new String();
 
         try {
-
-            PreparedStatement ps = connection.prepareStatement("SELECT * FROM chats WHERE sender_ID = ?");
+            PreparedStatement ps = connection.prepareStatement("SELECT * FROM chats WHERE Sender_ID = ? AND Receiver_ID = ? OR Receiver_ID = ? AND Sender_ID = ?;");
             ps.setInt(1, id);
+            ps.setInt(2, partnerId);
+            ps.setInt(3, id);
+            ps.setInt(4, partnerId);
             ResultSet rs = ps.executeQuery();
-
             while (rs.next()) {
+                String key = rs.getString("sender_id");
+                String username = queryFindUsernameByID(Integer.valueOf(key));
+                String msg = rs.getString("message");
+               // "[13] [here is my message]"
+                fullMessage = "[".concat(username).concat("]") + " [".concat(msg).concat("]\n");
 
-                messages.add(rs.getString("message"));
-
+                System.out.println("FULL MESSAGE: " + fullMessage);
+                messages.add(fullMessage);
             }
-
             return messages;
-
         } catch (SQLException e) {
-
             e.printStackTrace();
-
             return messages; // Returns an empty list on error
-
-        } finally {
-
-            try {
-
-                connection.close();
-
-            } catch (SQLException e) {
-
-                e.printStackTrace();
-
-            }
         }
     }
 
