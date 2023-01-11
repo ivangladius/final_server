@@ -8,6 +8,8 @@ import java.util.*;
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 
@@ -244,10 +246,20 @@ public class Server {
     }
 
     public String sendMessage(String payload) {
+        System.out.println("# SEND MESSAGE: " + payload);
+
+        String msg = " ";
+        Matcher x = Pattern.compile("\\[(.*?)\\]").matcher(payload);
+        if (x.find()) {
+            msg = x.group(1);
+            System.out.println("MSG MSG MSG: " + msg);
+        } else
+            System.out.println("MSG MSG MSG ELSE ");
 
         Timestamp timeStamp = new Timestamp(System.currentTimeMillis());
         String[] info = payload.split(" ");
-        db.queryAddMessage(Integer.parseInt(info[0]), Integer.parseInt(info[1]), info[2], timeStamp);
+//        db.queryAddMessage(Integer.parseInt(info[0]), Integer.parseInt(info[1]), info[2], timeStamp);
+        db.queryAddMessage(Integer.parseInt(info[0]), Integer.parseInt(info[1]), msg, timeStamp);
 
         return info[2];
     }
@@ -280,6 +292,7 @@ public class Server {
         String partner = prep[1];
         System.out.println("PRIM: " + id + " PARTNER: " + partner);
         List<String> messages = db.queryGetMessages(id, partner);
+        System.out.println("MEESAGE SIZE: " + messages.size());
         if (messages.size() == 0)
             return null;
         else if (messages == null)
@@ -290,10 +303,10 @@ public class Server {
             System.out.println("m: " + m);
 //            m = new String("[".concat(m).concat("]"));
             reply += m ;
-            System.out.println("BUILD: " + m);
+//            System.out.println("BUILD: " + m);
         }
 
-        System.out.println("$$$ SENDING: \n" + reply);
+//        System.out.println("$$$ SENDING: \n" + reply);
         return reply;
     }
 

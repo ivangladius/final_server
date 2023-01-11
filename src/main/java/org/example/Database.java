@@ -46,7 +46,7 @@ public interface Database {
     public List<String> queryListFriends(Integer id);
 
     // we send . to chats table if friend was added, now we remove it if msg count > 2
-//    public void cleanoutMessages();
+    public int cleanoutMessages() throws SQLException;
 
     public int queryAddMessage(Integer senderID, Integer receiverID, String message, Timestamp Time);
 

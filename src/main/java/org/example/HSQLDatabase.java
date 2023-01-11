@@ -524,23 +524,13 @@ public class HSQLDatabase implements Database {
         }
     }
 
-//    @Override
-//    public void cleanoutMessages() {
-//
-//        PreparedStatement ps = connection.prepareStatement("DELETE FROM chats WHERE message = ?");
-//        ps.setInt(1, id);
-//        ResultSet rs = ps.executeQuery();
-//        while (rs.next()) {
-//            String key = rs.getString("sender_id");
-//            String username = queryFindUsernameByID(Integer.valueOf(key));
-//            String msg = rs.getString("message");
-//            // "[13] [here is my message]"
-//            fullMessage = "[".concat(username).concat("]") + " [".concat(msg).concat("]\n");
-//
-//            System.out.println("FULL MESSAGE: " + fullMessage);
-//            messages.add(fullMessage);
-//        }
-//    }
+    @Override
+    public int cleanoutMessages() throws SQLException {
+
+        PreparedStatement ps = connection.prepareStatement("DELETE FROM chats WHERE message = ?");
+        ps.setString(1, ".");
+        return ps.executeUpdate();
+    }
 
 
     @Override
@@ -573,9 +563,10 @@ public class HSQLDatabase implements Database {
         Integer partnerId = Integer.valueOf(queryFindIDByUsername(partner));
 
         String fullMessage = new String();
+        List<String> timeStamps = new ArrayList<>();
 
         try {
-            PreparedStatement ps = connection.prepareStatement("SELECT * FROM chats WHERE Sender_ID = ? AND Receiver_ID = ? OR Receiver_ID = ? AND Sender_ID = ?;");
+            PreparedStatement ps = connection.prepareStatement("SELECT * FROM chats WHERE Sender_ID = ? AND Receiver_ID = ? OR Receiver_ID = ? AND Sender_ID = ? ORDER BY Time;");
             ps.setInt(1, id);
             ps.setInt(2, partnerId);
             ps.setInt(3, id);
@@ -585,10 +576,14 @@ public class HSQLDatabase implements Database {
                 String key = rs.getString("sender_id");
                 String username = queryFindUsernameByID(Integer.valueOf(key));
                 String msg = rs.getString("message");
+                String timestamp = rs.getString("time");
+                System.out.println("TIME: " + timestamp);
                // "[13] [here is my message]"
-                fullMessage = "[".concat(username).concat("]") + " [".concat(msg).concat("]\n");
+                fullMessage = "[".concat(username + " " + timestamp.substring(11, 16)).concat("]") + " [".concat(msg).concat("]\t");
 
-                System.out.println("FULL MESSAGE: " + fullMessage);
+//                System.out.println("FULL MESSAGE: " + fullMessage);
+                System.out.println(username + " " + timestamp + ": " + msg + "\n");
+                timeStamps.add(timestamp + "\n");
                 messages.add(fullMessage);
             }
             return messages;
